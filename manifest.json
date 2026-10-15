@@ -1,0 +1,37 @@
+{
+  "slug": "bot-blocker",
+  "type": "module",
+  "name": "🛡 Bot Blocker",
+  "version": "1.0.0",
+  "author": "FestaCMS",
+  "license": "MIT",
+  "description": "Блокировка ботов, сканеров и плохих IP. Свой список правил, логи, пресеты.",
+
+  "min_cms_version": "1.0.0",
+  "min_php_version": "7.4",
+
+  "entry_point": "blocker.php",
+  "admin_url": "admin.php",
+
+  "tables": [
+    "bot_blocker_rules",
+    "bot_blocker_log"
+  ],
+
+  "settings": {
+    "auto_update_check": true,
+    "log_retention_days": 30,
+    "default_action": "404"
+  },
+
+  "update": {
+    "enabled": true,
+    "source": "github",
+    "repo": "festacms/festacms-plugin-bot-blocker",
+    "branch": "main",
+    "manifest_url": "https://raw.githubusercontent.com/festacms/festacms-plugin-bot-blocker/main/manifest.json"
+  },
+
+  "repository": "https://github.com/festacms/festacms-plugin-bot-blocker",
+  "issues": "https://github.com/festacms/festacms-plugin-bot-blocker/issues"
+}
