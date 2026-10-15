@@ -1,0 +1,75 @@
+# ============================================================
+# FestaCMS — .gitignore для плагинов
+# ============================================================
+
+# === Системные файлы OS ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# === Файлы IDE и редакторов ===
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# === Логи и временные файлы ===
+*.log
+logs/
+log/
+*.tmp
+*.temp
+*.cache
+cache/
+tmp/
+temp/
+
+# === Бэкапы и черновики ===
+*.bak
+*.backup
+*.old
+*.orig
+*_backup*
+*_old*
+*.sql.gz
+
+# === Локальные конфиги (не публикуем!) ===
+.env
+.env.local
+.env.*.local
+config.local.php
+config.local.json
+*.local.php
+
+# === Composer ===
+/vendor/
+composer.lock
+
+# === Node (если когда-то понадобится) ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# === Специфика FestaCMS ===
+# Кеш правил плагина (создаётся автоматически)
+bot-blocker-cache.php
+rules.cache.php
+
+# Бэкапы перед обновлением
+_backup/
+_trash/
+
+# Папка с исходниками для отладки
+_debug/
