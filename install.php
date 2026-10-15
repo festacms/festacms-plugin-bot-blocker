@@ -3,6 +3,14 @@
  * FestaCMS — Bot Blocker Plugin
  * Установщик плагина
  *
+ * Вызывается ядром FestaCMS при установке плагина.
+ * Создаёт таблицы БД, регистрирует плагин в реестре,
+ * сохраняет runtime-конфиг с IP администратора.
+ *
+ * ВАЖНО (безопасность): путь к админке FestaCMS в этом файле
+ * НЕ упоминается. Защита админа — через белый список IP
+ * (config.runtime.php, создаётся при установке).
+ *
  * @package    FestaCMS
  * @subpackage Plugin\BotBlocker
  * @version    1.0.0
@@ -11,7 +19,14 @@
 
 declare(strict_types=1);
 
-// Защита от прямого запуска
+// ============================================================
+// 0. Защита от прямого запуска
+// ============================================================
+//
+// Ядро FestaCMS определяет константу FESTACMS_PLUGIN_INSTALL
+// перед подключением этого файла.
+// Прямой запрос из браузера → константа не определена → 403.
+//
 if (!defined('FESTACMS_PLUGIN_INSTALL')) {
     http_response_code(403);
     exit('Прямой запуск запрещён. Установка выполняется через ядро FestaCMS.');
@@ -21,7 +36,7 @@ if (!defined('FESTACMS_PLUGIN_INSTALL')) {
 // 1. Проверка окружения
 // ============================================================
 
-$errors = [];
+$errors   = [];
 $warnings = [];
 
 // PHP-версия
@@ -29,7 +44,7 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
     $errors[] = 'Требуется PHP 7.4 или выше. Сейчас: ' . PHP_VERSION;
 }
 
-// MySQL — проверяем через класс Database (если он есть)
+// Наличие класса Database
 if (!class_exists('Database')) {
     $errors[] = 'Не найден класс Database. Плагин запущен вне FestaCMS?';
 }
@@ -45,18 +60,18 @@ if (!empty($errors)) {
 // 2. Параметры плагина
 // ============================================================
 
-$pluginSlug     = 'bot-blocker';
-$pluginName     = '🛡 Bot Blocker';
-$pluginVersion  = '1.0.0';
-$pluginAuthor   = 'FestaCMS';
-$pluginType     = 'module';
+$pluginSlug    = 'bot-blocker';
+$pluginName    = '🛡 Bot Blocker';
+$pluginVersion = '1.0.0';
+$pluginAuthor  = 'FestaCMS';
+$pluginType    = 'module';
 
 // ============================================================
 // 3. SQL-запросы создания таблиц
 // ============================================================
 
-$tableRules = 'bot_blocker_rules';
-$tableLog   = 'bot_blocker_log';
+$tableRules   = 'bot_blocker_rules';
+$tableLog     = 'bot_blocker_log';
 $tablePlugins = 'plugins';
 
 // --- Таблица правил ---
@@ -97,7 +112,7 @@ CREATE TABLE IF NOT EXISTS `{$tableLog}` (
   COMMENT='Bot Blocker — лог срабатываний';
 ";
 
-// --- Таблица plugins (создаём если нет — пока ядро не готово) ---
+// --- Таблица plugins (создаём если нет — пока ядра не готово) ---
 $sqlPlugins = "
 CREATE TABLE IF NOT EXISTS `{$tablePlugins}` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -119,7 +134,7 @@ CREATE TABLE IF NOT EXISTS `{$tablePlugins}` (
 ";
 
 // ============================================================
-// 4. Выполнение
+// 4. Выполнение: создание таблиц
 // ============================================================
 
 try {
@@ -164,9 +179,9 @@ try {
                 $pluginType,
                 $pluginAuthor,
                 json_encode([
-                    'auto_update_check' => true,
+                    'auto_update_check'  => true,
                     'log_retention_days' => 30,
-                    'default_action'    => '404',
+                    'default_action'     => '404',
                 ], JSON_UNESCAPED_UNICODE),
             ]
         );
@@ -180,14 +195,65 @@ try {
 }
 
 // ============================================================
+// 5.5. Сохранение runtime-конфига с админским IP
+// ============================================================
+//
+// Записываем IP того, кто устанавливает плагин, в белый список.
+// Это защита от самоблокировки: админ всегда сможет зайти в панель.
+//
+// ВАЖНО: файл config.runtime.php в .gitignore — на GitHub не уйдёт.
+//
+
+try {
+    // Определяем IP установщика (того, кто запустил install.php)
+    $installerIp = $_SERVER['HTTP_X_FORWARDED_FOR']
+        ?? $_SERVER['HTTP_X_REAL_IP']
+        ?? $_SERVER['REMOTE_ADDR']
+        ?? '';
+
+    // Может быть цепочка "client, proxy1, proxy2" — берём первый
+    $installerIp = trim(explode(',', $installerIp)[0]);
+
+    // Валидация
+    if (!filter_var($installerIp, FILTER_VALIDATE_IP)) {
+        $installerIp = '';
+    }
+
+    // Формируем runtime-конфиг
+    $runtimeConfig = [
+        'enabled'          => true,
+        'default_action'   => '404',
+        'redirect_url'     => '/',
+        'log_enabled'      => true,
+        'log_skip_allowed' => false,
+        'admin_ips'        => $installerIp !== '' ? [$installerIp] : [],
+    ];
+
+    $runtimeFile    = __DIR__ . '/config.runtime.php';
+    $runtimeContent = "<?php\n"
+        . "// Bot Blocker runtime config — auto-generated. Do not edit manually.\n"
+        . "// Файл в .gitignore — НЕ попадает в публичный репозиторий.\n\n"
+        . "return " . var_export($runtimeConfig, true) . ";\n";
+
+    @file_put_contents($runtimeFile, $runtimeContent, LOCK_EX);
+
+} catch (Throwable $e) {
+    // Не критично — если не удалось записать, админ может добавить IP вручную
+    // через админку плагина
+}
+
+// ============================================================
 // 6. Логирование
 // ============================================================
 
 if (class_exists('Logger')) {
     try {
-        Logger::action('plugin_install', "Установлен плагин {$pluginName} v{$pluginVersion}");
+        Logger::action(
+            'plugin_install',
+            "Установлен плагин {$pluginName} v{$pluginVersion}"
+        );
     } catch (Throwable $e) {
-        // логирование не критично
+        // Логирование не критично
     }
 }
 
@@ -196,10 +262,10 @@ if (class_exists('Logger')) {
 // ============================================================
 
 return [
-    'success'   => true,
-    'message'   => "Плагин {$pluginName} v{$pluginVersion} успешно установлен.",
-    'tables'    => [$tableRules, $tableLog],
-    'plugin'    => [
+    'success' => true,
+    'message' => "Плагин {$pluginName} v{$pluginVersion} успешно установлен.",
+    'tables'  => [$tableRules, $tableLog],
+    'plugin'  => [
         'slug'    => $pluginSlug,
         'name'    => $pluginName,
         'version' => $pluginVersion,

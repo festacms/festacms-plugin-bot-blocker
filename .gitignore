@@ -62,10 +62,13 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 
-# === Специфика FestaCMS ===
-# Кеш правил плагина (создаётся автоматически)
-bot-blocker-cache.php
+# === Специфика FestaCMS Bot Blocker ===
+# Кеш правил (создаётся автоматически блокировщиком)
 rules.cache.php
+bot-blocker-cache.php
+
+# Runtime-конфиг плагина (создаётся при установке, содержит IP админа)
+config.runtime.php
 
 # Бэкапы перед обновлением
 _backup/
@@ -73,3 +76,10 @@ _trash/
 
 # Папка с исходниками для отладки
 _debug/
+
+# === Специфика FestaCMS (все плагины) ===
+# Любые runtime-конфиги
+*.runtime.php
+
+# Кеши плагинов
+*.cache.php
