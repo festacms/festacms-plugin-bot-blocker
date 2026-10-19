@@ -3,9 +3,9 @@
 const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
 
 // Переключение вкладок
-document.querySelectorAll('.bb-tab-btn').forEach(btn => {
+document.querySelectorAll('.greet-tab').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.bb-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.greet-tab').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.bb-tab-content').forEach(c => c.classList.remove('active'));
         
         btn.classList.add('active');
@@ -28,23 +28,26 @@ function loadRules() {
             if (!res.success) throw new Error(res.error);
             if (!res.data.length) return wrap.innerHTML = '<div class="log-empty">Правил пока нет.</div>';
             
-            let html = `<table class="bb-table"><thead><tr>
-                <th>ID</th><th>Тип</th><th>Значение</th><th>Действие</th><th>Срабатываний</th><th>Комментарий</th><th>Удалить</th>
+            let html = `<div class="sys-table-full"><table class="sys-table"><thead><tr>
+                <th>ID</th><th>Тип</th><th>Значение</th><th>Действие</th><th>Срабатываний</th><th>Комментарий</th><th></th>
             </tr></thead><tbody>`;
             
             res.data.forEach(r => {
-                const badge = `<span class="bb-badge bb-badge-${r.action}">${r.action}</span>`;
+                let badgeClass = 'sys-badge-error'; // block
+                if (r.action === 'allow') badgeClass = 'sys-badge-ok';
+                if (r.action === 'log') badgeClass = 'sys-badge-warn';
+
                 html += `<tr>
-                    <td>${r.id}</td>
+                    <td class="cat-id">${r.id}</td>
                     <td>${r.type}</td>
-                    <td><code>${r.pattern}</code></td>
-                    <td>${badge}</td>
+                    <td><code class="cat-slug">${r.pattern}</code></td>
+                    <td><span class="sys-badge ${badgeClass}">${r.action}</span></td>
                     <td>${r.hits}</td>
                     <td>${r.comment || '-'}</td>
-                    <td><button class="sys-btn" onclick="deleteRule(${r.id})">🗑</button></td>
+                    <td><button class="sys-btn greet-btn-icon" onclick="deleteRule(${r.id})" title="Удалить">🗑</button></td>
                 </tr>`;
             });
-            html += '</tbody></table>';
+            html += '</tbody></table></div>';
             wrap.innerHTML = html;
         }).catch(err => wrap.innerHTML = `<div class="log-empty" style="color:red">${err.message}</div>`);
 }
@@ -61,36 +64,38 @@ function loadLogs() {
             if (!res.success) throw new Error(res.error);
             if (!res.data.length) return wrap.innerHTML = '<div class="log-empty">Лог пуст.</div>';
             
-            let html = `<table class="bb-table"><thead><tr>
+            let html = `<div class="sys-table-full"><table class="sys-table"><thead><tr>
                 <th>Время</th><th>IP</th><th>URI</th><th>Действие</th>
             </tr></thead><tbody>`;
             
             res.data.forEach(l => {
+                let badgeClass = 'sys-badge-error';
+                if (l.action === 'allow') badgeClass = 'sys-badge-ok';
+                if (l.action === 'log') badgeClass = 'sys-badge-warn';
+
                 html += `<tr>
                     <td>${l.created_at}</td>
-                    <td>${l.ip}</td>
-                    <td><code>${l.uri}</code></td>
-                    <td>${l.action}</td>
+                    <td><code class="cat-slug">${l.ip}</code></td>
+                    <td><code class="cat-slug">${l.uri}</code></td>
+                    <td><span class="sys-badge ${badgeClass}">${l.action}</span></td>
                 </tr>`;
             });
-            html += '</tbody></table>';
+            html += '</tbody></table></div>';
             wrap.innerHTML = html;
         }).catch(err => wrap.innerHTML = `<div class="log-empty" style="color:red">${err.message}</div>`);
 }
 
-// Модалка добавления правила
-function openRuleModal() { document.getElementById('ruleModal').classList.add('active'); }
-function closeRuleModal() { document.getElementById('ruleModal').classList.remove('active'); }
+// Модалка
+function openRuleModal() { document.getElementById('ruleModal').classList.add('is-open'); }
+function closeRuleModal() { document.getElementById('ruleModal').classList.remove('is-open'); }
 
 // Сохранение правила
 function saveRule(e) {
     e.preventDefault();
     const form = new FormData(e.target);
-    
-    // Исправляем name="action" в форме, так как в AJAX он называется action_type
     form.append('action', 'add_rule');
     form.append('action_type', form.get('action')); 
-    form.delete('action'); // Удаляем дубликат, чтобы не ломать роутер
+    form.delete('action');
 
     fetch('bot-blocker-ajax.php', { method: 'POST', body: form })
         .then(r => r.json())
@@ -151,7 +156,7 @@ function saveSettings(e) {
         });
 }
 
-// Инициализация при загрузке
+// Инициализация
 document.addEventListener('DOMContentLoaded', () => {
-    loadRules(); // Загружаем правила по умолчанию
+    loadRules();
 });
