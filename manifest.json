@@ -1,8 +1,9 @@
 {
   "slug": "bot-blocker",
+  "scope": "server",
   "type": "module",
   "name": "🛡 Bot Blocker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "FestaCMS",
   "license": "MIT",
   "description": "Блокировка ботов, сканеров и плохих IP. Свой список правил, логи, пресеты.",
@@ -10,8 +11,8 @@
   "min_cms_version": "1.0.0",
   "min_php_version": "7.4",
 
-  "entry_point": "blocker.php",
-  "admin_url": "admin.php",
+  "public_entry": "blocker.php",
+  "admin_url": "bot-blocker-admin.php",
 
   "tables": [
     "bot_blocker_rules",
