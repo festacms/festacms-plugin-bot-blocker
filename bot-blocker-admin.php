@@ -19,15 +19,23 @@ if (empty($_SESSION['csrf_token'])) {
 }
 $csrfToken = $_SESSION['csrf_token'];
 
-$rulesCount   = Database::fetchColumn("SELECT COUNT(*) FROM bot_blocker_rules");
-$logCount     = Database::fetchColumn("SELECT COUNT(*) FROM bot_blocker_log");
-$blockedCount = Database::fetchColumn("SELECT SUM(hits) FROM bot_blocker_rules WHERE action = 'block'");
-
+// Автоочистка логов (если настроено)
 $configFile = __DIR__ . '/config.runtime.php';
 $config = file_exists($configFile) ? include $configFile : [
     'enabled' => true, 'default_action' => '404', 'redirect_url' => '/',
-    'log_enabled' => true, 'admin_ips' => []
+    'log_enabled' => true, 'admin_ips' => [], 'log_retention_days' => 30
 ];
+
+$days = (int)($config['log_retention_days'] ?? 30);
+if ($days > 0) {
+    try {
+        Database::execute("DELETE FROM bot_blocker_log WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)", [$days]);
+    } catch (Throwable $e) {}
+}
+
+$rulesCount   = Database::fetchColumn("SELECT COUNT(*) FROM bot_blocker_rules");
+$logCount     = Database::fetchColumn("SELECT COUNT(*) FROM bot_blocker_log");
+$blockedCount = Database::fetchColumn("SELECT SUM(hits) FROM bot_blocker_rules WHERE action = 'block'");
 
 include __DIR__ . '/../../admin_header.php';
 renderAdminBreadcrumbs([
@@ -56,7 +64,6 @@ renderAdminBreadcrumbs([
     </div>
 </div>
 
-<!-- Нативные вкладки FestaCMS -->
 <div class="greet-tabs">
     <button class="greet-tab active" data-tab="rules">📜 Правила</button>
     <button class="greet-tab" data-tab="log">📋 Лог</button>
@@ -70,6 +77,15 @@ renderAdminBreadcrumbs([
             <button class="sys-btn sys-btn-primary" onclick="openRuleModal()">➕ Добавить правило</button>
         </div>
     </div>
+
+    <!-- Блок пресетов -->
+    <div style="margin-bottom:1rem; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <span style="font-size:13px; font-weight:600; color:var(--text-light);">Быстрая установка:</span>
+        <button class="sys-btn" onclick="applyPreset('scanners')" title="SQL-инъекции, сканеры CMS и уязвимостей">🛡 Сканеры</button>
+        <button class="sys-btn" onclick="applyPreset('seo')" title="SEO-краулеры (Semrush, Ahrefs)">🔍 SEO-боты</button>
+        <button class="sys-btn" onclick="applyPreset('cli')" title="Консольные клиенты (curl, wget, python)">💻 CLI-клиенты</button>
+    </div>
+
     <div id="rules-table-wrap">
         <div class="log-empty">Загрузка...</div>
     </div>
@@ -82,6 +98,19 @@ renderAdminBreadcrumbs([
             <button class="sys-btn sys-btn-danger" onclick="clearLogs()">🗑 Очистить лог</button>
         </div>
     </div>
+    
+    <!-- Фильтры лога -->
+    <div style="display:flex; gap:10px; margin-bottom:1rem; flex-wrap:wrap; align-items:center;">
+        <input type="text" id="filterIp" class="greet-input" placeholder="Поиск по IP..." style="max-width:200px; margin:0;">
+        <select id="filterAction" class="greet-input" style="max-width:150px; margin:0;">
+            <option value="">Все действия</option>
+            <option value="block">Block</option>
+            <option value="allow">Allow</option>
+            <option value="log">Log</option>
+        </select>
+        <button class="sys-btn" onclick="loadLogs()">🔍 Найти</button>
+    </div>
+
     <div id="log-table-wrap">
         <div class="log-empty">Загрузка...</div>
     </div>
@@ -91,7 +120,6 @@ renderAdminBreadcrumbs([
     <div class="sys-block-header">
         <span class="sys-block-title">Настройки плагина</span>
     </div>
-    <!-- Используем .greet-form для сброса глобальных стилей форм -->
     <form id="settingsForm" class="greet-form" onsubmit="saveSettings(event)">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
 
@@ -117,6 +145,10 @@ renderAdminBreadcrumbs([
         <label class="greet-label">URL для редиректа</label>
         <input type="text" name="redirect_url" class="greet-input" value="<?= htmlspecialchars($config['redirect_url']) ?>" style="margin-bottom:1rem;">
 
+        <label class="greet-label">Хранить логи (дней)</label>
+        <input type="number" name="log_retention_days" class="greet-input" value="<?= (int)($config['log_retention_days'] ?? 30) ?>" min="0" max="365" style="margin-bottom:1rem; max-width:150px;">
+        <div style="font-size:12px; color:var(--text-light); margin-top:-10px; margin-bottom:1rem;">0 — хранить бессрочно</div>
+
         <label class="greet-label">Белый список IP</label>
         <textarea name="admin_ips" class="greet-input" rows="3" style="margin-bottom:1rem;"><?= htmlspecialchars(implode("\n", $config['admin_ips'])) ?></textarea>
 
@@ -125,7 +157,6 @@ renderAdminBreadcrumbs([
     </form>
 </div>
 
-<!-- Нативная модалка FestaCMS -->
 <div class="greet-preview-modal" id="ruleModal">
     <div class="greet-preview-backdrop" onclick="closeRuleModal()"></div>
     <div class="greet-preview-content">

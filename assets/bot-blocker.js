@@ -26,7 +26,7 @@ function loadRules() {
         .then(r => r.json())
         .then(res => {
             if (!res.success) throw new Error(res.error);
-            if (!res.data.length) return wrap.innerHTML = '<div class="log-empty">Правил пока нет.</div>';
+            if (!res.data.length) return wrap.innerHTML = '<div class="log-empty">Правил пока нет. Установите пресет или добавьте правило.</div>';
             
             let html = `<div class="sys-table-full"><table class="sys-table"><thead><tr>
                 <th>ID</th><th>Тип</th><th>Значение</th><th>Действие</th><th>Срабатываний</th><th>Комментарий</th><th></th>
@@ -52,17 +52,20 @@ function loadRules() {
         }).catch(err => wrap.innerHTML = `<div class="log-empty" style="color:red">${err.message}</div>`);
 }
 
-// Загрузка лога
+// Загрузка лога (с фильтрами)
 function loadLogs() {
     const wrap = document.getElementById('log-table-wrap');
     if (!wrap) return;
 
+    const ip = document.getElementById('filterIp')?.value || '';
+    const act = document.getElementById('filterAction')?.value || '';
+    
     wrap.innerHTML = '<div class="log-empty">Загрузка...</div>';
-    fetch(`bot-blocker-ajax.php?action=get_logs&csrf_token=${csrfToken}`)
+    fetch(`bot-blocker-ajax.php?action=get_logs&ip=${encodeURIComponent(ip)}&act=${encodeURIComponent(act)}&csrf_token=${csrfToken}`)
         .then(r => r.json())
         .then(res => {
             if (!res.success) throw new Error(res.error);
-            if (!res.data.length) return wrap.innerHTML = '<div class="log-empty">Лог пуст.</div>';
+            if (!res.data.length) return wrap.innerHTML = '<div class="log-empty">Лог пуст или ничего не найдено.</div>';
             
             let html = `<div class="sys-table-full"><table class="sys-table"><thead><tr>
                 <th>Время</th><th>IP</th><th>URI</th><th>Действие</th>
@@ -83,6 +86,24 @@ function loadLogs() {
             html += '</tbody></table></div>';
             wrap.innerHTML = html;
         }).catch(err => wrap.innerHTML = `<div class="log-empty" style="color:red">${err.message}</div>`);
+}
+
+// Применение пресета
+function applyPreset(presetName) {
+    if (!confirm('Добавить правила из этого пресета? Существующие дубликаты будут пропущены.')) return;
+    
+    const form = new FormData();
+    form.append('action', 'apply_preset');
+    form.append('preset', presetName);
+    form.append('csrf_token', csrfToken);
+
+    fetch('bot-blocker-ajax.php', { method: 'POST', body: form })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) throw new Error(res.error);
+            alert(`✅ Добавлено новых правил: ${res.inserted}`);
+            loadRules();
+        }).catch(err => alert('Ошибка: ' + err.message));
 }
 
 // Модалка
