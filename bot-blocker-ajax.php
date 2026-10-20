@@ -67,7 +67,9 @@ try {
             $pattern = trim($_POST['pattern'] ?? '');
             $act     = $_POST['action_type'] ?? 'block';
             $comment = trim($_POST['comment'] ?? '');
-            if (!$pattern || !in_array($type, ['ip', 'cidr', 'ua', 'referer'])) {
+            
+            // Добавлен тип 'path'
+            if (!$pattern || !in_array($type, ['ip', 'cidr', 'ua', 'referer', 'path'])) {
                 throw new Exception('Неверные данные');
             }
             Database::execute("INSERT INTO bot_blocker_rules (type, pattern, action, comment) VALUES (?, ?, ?, ?)", [$type, $pattern, $act, $comment]);
@@ -145,7 +147,8 @@ try {
 
             $inserted = 0;
             foreach ($rules as $r) {
-                if (!in_array($r['type'], ['ip','cidr','ua','referer'])) continue;
+                // Добавлен тип 'path' в проверку при импорте
+                if (!isset($r['type']) || !in_array($r['type'], ['ip','cidr','ua','referer','path'])) continue;
                 Database::execute("INSERT INTO bot_blocker_rules (type, pattern, action, comment) VALUES (?, ?, ?, ?)", [$r['type'], $r['pattern'], $r['action'], $r['comment']]);
                 $inserted++;
             }

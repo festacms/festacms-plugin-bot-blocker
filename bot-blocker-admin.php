@@ -157,13 +157,19 @@ renderAdminBreadcrumbs([
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
             <label class="greet-label">Тип</label>
             <select name="type" class="greet-input" style="margin-bottom:1rem;">
-                <option value="ip">IP-адрес</option><option value="cidr">CIDR</option><option value="ua">User-Agent</option><option value="referer">Referer</option>
+                <option value="ip">IP-адрес</option>
+                <option value="cidr">CIDR-диапазон</option>
+                <option value="ua">User-Agent</option>
+                <option value="referer">Referer</option>
+                <option value="path">Путь (URI)</option> <!-- ДОБАВЛЕНО -->
             </select>
             <label class="greet-label">Значение</label>
             <input type="text" name="pattern" class="greet-input" required style="margin-bottom:1rem;">
             <label class="greet-label">Действие</label>
             <select name="action" class="greet-input" style="margin-bottom:1rem;">
-                <option value="block">Заблокировать</option><option value="allow">Разрешить</option><option value="log">Логировать</option>
+                <option value="block">Заблокировать</option>
+                <option value="allow">Разрешить</option>
+                <option value="log">Логировать</option>
             </select>
             <label class="greet-label">Комментарий</label>
             <input type="text" name="comment" class="greet-input" style="margin-bottom:1rem;">
