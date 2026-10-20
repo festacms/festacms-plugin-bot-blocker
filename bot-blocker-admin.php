@@ -161,7 +161,7 @@ renderAdminBreadcrumbs([
                 <option value="cidr">CIDR-диапазон</option>
                 <option value="ua">User-Agent</option>
                 <option value="referer">Referer</option>
-                <option value="path">Путь (URI)</option> <!-- ДОБАВЛЕНО -->
+                <option value="path">Путь (URI)</option>
             </select>
             <label class="greet-label">Значение</label>
             <input type="text" name="pattern" class="greet-input" required style="margin-bottom:1rem;">
@@ -199,5 +199,50 @@ renderAdminBreadcrumbs([
     </div>
 </div>
 
+<!-- Модалка: Обновление -->
+<div class="greet-preview-modal" id="confirmUpdateModal">
+    <div class="greet-preview-backdrop" onclick="closeConfirmModal()"></div>
+    <div class="greet-preview-content">
+        <button class="random-modal-close" onclick="closeConfirmModal()">✕</button>
+        <h3 class="random-modal-title">Обновление плагина</h3>
+        <p style="margin-bottom: 20px; font-size: 0.95rem; color: var(--text-light); line-height: 1.5;">
+            Вы уверены, что хотите обновить плагин?<br><br>
+            Перед обновлением будет автоматически создан бэкап.
+        </p>
+        <div class="greet-form-actions" style="border:none; padding-top:0;">
+            <button type="button" class="sys-btn" onclick="closeConfirmModal()">Отмена</button>
+            <button type="button" class="sys-btn sys-btn-primary" id="btn-confirm-update" onclick="startUpdate()" style="margin-left:auto;">Да, обновить</button>
+        </div>
+    </div>
+</div>
+
 <script src="assets/bot-blocker.js"></script>
+<script>
+// Локальная обертка для модалки в настройках
+function doUpdate() {
+    document.getElementById('confirmUpdateModal').classList.add('is-open');
+}
+function closeConfirmModal() {
+    document.getElementById('confirmUpdateModal').classList.remove('is-open');
+}
+function startUpdate() {
+    closeConfirmModal();
+    
+    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+    const resultDiv = document.getElementById('update-result');
+    resultDiv.innerHTML = '⏳ Скачивание и установка...';
+    resultDiv.style.color = '#666';
+    resultDiv.style.display = 'block';
+    
+    const form = new FormData();
+    form.append('action', 'update'); form.append('slug', 'bot-blocker'); form.append('csrf_token', csrfToken);
+
+    fetch('../plugin_update.php', { method: 'POST', body: form })
+        .then(r => r.json()).then(res => {
+            if (!res.success) throw new Error(res.error);
+            resultDiv.style.color = '#16a34a'; resultDiv.innerHTML = '✅ Обновлено! Перезагрузка...';
+            setTimeout(() => window.location.reload(), 2000);
+        }).catch(err => { resultDiv.style.color = '#dc2626'; resultDiv.innerHTML = `❌ ${err.message}`; });
+}
+</script>
 <?php include __DIR__ . '/../../admin_footer.php'; ?>
