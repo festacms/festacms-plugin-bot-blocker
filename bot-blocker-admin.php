@@ -218,7 +218,36 @@ renderAdminBreadcrumbs([
 
 <script src="assets/bot-blocker.js"></script>
 <script>
-// Локальная обертка для модалки в настройках
+// === Блок обновлений ===
+function checkUpdates() {
+    const resultDiv = document.getElementById('update-result');
+    const versionDiv = document.getElementById('current-version');
+    resultDiv.style.display = 'block'; 
+    resultDiv.style.color = '#666'; 
+    resultDiv.innerHTML = '⏳ Проверка GitHub...';
+    
+    const form = new FormData();
+    form.append('action', 'check'); 
+    form.append('slug', 'bot-blocker'); 
+    form.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+
+    fetch('../plugin_update.php', { method: 'POST', body: form })
+        .then(r => r.json()).then(res => {
+            if (!res.success) throw new Error(res.error);
+            versionDiv.innerHTML = `Текущая: <b>${res.data.local}</b>`;
+            if (res.data.has_update) {
+                resultDiv.style.color = '#d97706';
+                resultDiv.innerHTML = `🎉 Доступна версия <b>${res.data.remote}</b>! <button class="sys-btn sys-btn-primary" style="margin-left:10px; padding:2px 8px; font-size:0.8rem;" onclick="doUpdate()">Установить</button>`;
+            } else {
+                resultDiv.style.color = '#16a34a';
+                resultDiv.innerHTML = `✅ У вас последняя версия. <button class="sys-btn is-disabled" disabled style="margin-left:10px; padding:2px 8px; font-size:0.8rem;">Установить</button>`;
+            }
+        }).catch(err => { 
+            resultDiv.style.color = '#dc2626'; 
+            resultDiv.innerHTML = `❌ Ошибка: ${err.message}`; 
+        });
+}
+
 function doUpdate() {
     document.getElementById('confirmUpdateModal').classList.add('is-open');
 }
@@ -227,12 +256,10 @@ function closeConfirmModal() {
 }
 function startUpdate() {
     closeConfirmModal();
-    
     const csrfToken = document.querySelector('input[name="csrf_token"]').value;
     const resultDiv = document.getElementById('update-result');
     resultDiv.innerHTML = '⏳ Скачивание и установка...';
     resultDiv.style.color = '#666';
-    resultDiv.style.display = 'block';
     
     const form = new FormData();
     form.append('action', 'update'); form.append('slug', 'bot-blocker'); form.append('csrf_token', csrfToken);
@@ -244,5 +271,12 @@ function startUpdate() {
             setTimeout(() => window.location.reload(), 2000);
         }).catch(err => { resultDiv.style.color = '#dc2626'; resultDiv.innerHTML = `❌ ${err.message}`; });
 }
+
+// Автозапуск проверки при загрузке вкладки настроек (опционально)
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('current-version')) {
+        checkUpdates();
+    }
+});
 </script>
 <?php include __DIR__ . '/../../admin_footer.php'; ?>
